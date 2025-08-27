@@ -6,6 +6,8 @@ import Register from "./Components/Register";
 import Home from "./Pages/Home";
 import PrivateRoute from "./Pages/PrivateRoute";
 import ConfirmarTurnos from "./Components/confirmarTurnos";
+import HistorialTurnos from "./Components/historialTurnos";
+
 const App: React.FC = () => {
   const isAuthenticated = !!localStorage.getItem("token");
 
@@ -18,6 +20,7 @@ const App: React.FC = () => {
        <Route element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
             <Route path="/home" element={<Home />} />
             <Route path="/confirmar-turnos" element={<ConfirmarTurnos />} />
+            <Route path="/historial" element={<HistorialTurnos />} />
        </Route>
     </Routes>
   );

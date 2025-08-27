@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import Turno from "../Models/Turnos";
 import { Usuario } from "../Models/Usuario";
+import { Op } from "sequelize";
 
 // Extender Request para TypeScript si usamos JWT
 interface AuthRequest extends Request {
@@ -9,37 +10,54 @@ interface AuthRequest extends Request {
 
 export const turnoController = {
   crearTurno: async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const { fecha, usuarioId } = req.body;
+    console.log("Body recibido en crearTurno:", req.body);
+    const { fecha, usuarioId, deshabilitado } = req.body;
 
-    if (!fecha || !usuarioId) {
-        return res.status(400).json({ error: "Faltan campos obligatorios" });
+    if (!fecha || (usuarioId === undefined || usuarioId === null)) {
+      return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
     try {
-        // Verificar que el usuario exista
+      // Validamos usuario solo si no es turno admin/fantasma
+      if (usuarioId !== 0) {
         const usuario = await Usuario.findByPk(usuarioId);
-        if (!usuario) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-        }
+        if (!usuario) return res.status(404).json({ error: "Usuario no encontrado" });
+      }
 
-        // Verificar que el horario no esté ocupado
-        const turnoExistente = await Turno.findOne({ where: { fecha } });
-        if (turnoExistente) {
+      // Evitar choques de hora/minuto
+      const fechaObj = new Date(fecha);
+      fechaObj.setSeconds(0, 0);
+      const fechaFin = new Date(fechaObj);
+      fechaFin.setMinutes(fechaFin.getMinutes() + 1);
+
+      const turnoExistente = await Turno.findOne({
+        where: { fecha: { [Op.gte]: fechaObj, [Op.lt]: fechaFin } }
+      });
+
+      if (turnoExistente) {
         return res.status(400).json({ error: "El horario ya está reservado" });
-        }
+      }
 
-        const nuevoTurno = await Turno.create({ fecha, usuarioId });
-        return res.status(201).json({ message: "Turno creado", turno: nuevoTurno });
+      // Creamos el turno sin generar error por include
+      const nuevoTurno = await Turno.create({
+        fecha: fechaObj,
+        usuarioId: usuarioId === 0 ? null : usuarioId, // null para admin/fantasma
+        confirmado: false,
+        deshabilitado: !!deshabilitado,
+      });
+
+      return res.status(201).json({ message: "Turno creado", turno: nuevoTurno });
     } catch (error) {
-        console.error(error);
-        next(error);
+      console.error("Error crearTurno:", error);
+      return res.status(500).json({ error: "Error interno al crear el turno" });
     }
   },
-  // Listar todos los turnos con datos del cliente
-  listarTurnos: async ( req: Request, res: Response, next: NextFunction) => {
+
+  listarTurnos: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const turnos = await Turno.findAll({
         include: [{ model: Usuario, as: "cliente", attributes: ["nombre", "apellido", "telefono"] }],
+        order: [["fecha", "ASC"]],
       });
       return res.json(turnos);
     } catch (error) {
@@ -48,32 +66,31 @@ export const turnoController = {
     }
   },
 
-    listarTurnosPendientes: async ( req: Request, res: Response, next: NextFunction) => {
+  // Listar turnos pendientes
+  listarTurnosPendientes: async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const turnos = await Turno.findAll({
-        where: { confirmado: false }, // solo pendientes
+      const turnos = await Turno.findAll({
+        where: { confirmado: false },
         include: [{ model: Usuario, as: "cliente", attributes: ["nombre", "apellido", "telefono"] }],
         order: [["fecha", "ASC"]],
-        });
-        return res.json(turnos);
+      });
+      return res.json(turnos);
     } catch (error) {
-        console.error(error);
-        next(error);
+      console.error(error);
+      next(error);
     }
-    },
+  },
 
-   historialTurnos: async (req: AuthRequest, res: Response, next: NextFunction) => {
+  // Historial de turnos (solo admin)
+  historialTurnos: async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const usuario = await Usuario.findByPk(req.user?.id);
-
       if (!usuario || usuario.admin !== true) {
         return res.status(403).json({ error: "Acceso denegado. Solo admin." });
       }
 
       const turnos = await Turno.findAll({
-        include: [
-          { model: Usuario, as: "cliente", attributes: ["nombre", "apellido", "telefono"] }
-        ],
+        include: [{ model: Usuario, as: "cliente", attributes: ["nombre", "apellido", "telefono"] }],
         order: [["fecha", "DESC"]],
       });
 
@@ -83,13 +100,12 @@ export const turnoController = {
       next(error);
     }
   },
-  // Confirmar turno (podemos integrar WhatsApp luego)
+
+  // Confirmar turno (solo admin)
   confirmarTurno: async (req: AuthRequest, res: Response, next: NextFunction) => {
     const { id } = req.params;
-
     try {
       const usuario = await Usuario.findByPk(req.user?.id);
-
       if (!usuario || usuario.admin !== true) {
         return res.status(403).json({ error: "Acceso denegado. Solo admin." });
       }
@@ -101,7 +117,6 @@ export const turnoController = {
       if (!turno) return res.status(404).json({ error: "Turno no encontrado" });
 
       await turno.update({ confirmado: true });
-
       return res.json({ message: `Turno confirmado para ${turno.cliente?.nombre} ${turno.cliente?.apellido}` });
     } catch (error) {
       console.error(error);
@@ -109,9 +124,9 @@ export const turnoController = {
     }
   },
 
+  // Eliminar turno
   eliminarTurno: async (req: AuthRequest, res: Response, next: NextFunction) => {
     const { id } = req.params;
-
     try {
       const turno = await Turno.findByPk(id);
       if (!turno) return res.status(404).json({ error: "Turno no encontrado" });
@@ -121,6 +136,23 @@ export const turnoController = {
     } catch (error) {
       console.error(error);
       next(error);
+    }
+  },
+
+  // Deshabilitar turno
+  deshabilitarTurno: async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const turno = await Turno.findByPk(id);
+      if (!turno) return res.status(404).json({ message: "Turno no encontrado" });
+
+      // Marcamos el turno como deshabilitado
+      turno.deshabilitado = true;
+      await turno.save();
+
+      return res.json({ message: "Turno deshabilitado correctamente", turno });
+    } catch (error) {
+      return res.status(500).json({ message: "Error al deshabilitar turno", error });
     }
   },
 };
