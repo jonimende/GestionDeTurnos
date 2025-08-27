@@ -5,9 +5,10 @@ import { Usuario } from "./Usuario";
 class Turno extends Model {
   public id!: number;
   public fecha!: Date;
-  public usuarioId!: number;
+  public usuarioId!: number|null;
   public confirmado!: boolean; // <-- agregar este campo
-
+  public ocupado!: boolean;
+  public deshabilitado!: boolean;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -16,10 +17,33 @@ class Turno extends Model {
 
 Turno.init(
   {
-    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    fecha: { type: DataTypes.DATE, allowNull: false },
-    usuarioId: { type: DataTypes.INTEGER, allowNull: false, field: "usuario_id" },
-    confirmado: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }, // <-- inicializamos en false
+    id: { 
+      type: DataTypes.INTEGER, 
+      autoIncrement: true, 
+      primaryKey: true 
+    },
+    fecha: { 
+      type: DataTypes.DATE,
+       allowNull: false
+    },
+    usuarioId: { 
+      type: DataTypes.INTEGER, 
+      allowNull: true, 
+      field: "usuario_id" 
+    },
+    confirmado: { 
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false 
+    }, 
+    ocupado: {  
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    deshabilitado: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false, // por defecto no está deshabilitado
+    },
   },
   {
     sequelize,

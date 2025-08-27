@@ -6,8 +6,7 @@ import cors from "cors";
 import { sequelize } from "./db";
 import authRoutes from "./Routes/authRoutes";
 import turnoRoutes from "./Routes/turnosRoutes";
-import { authenticateToken } from "./Middlewares/authenticateToken";
-import { isAdmin } from "./Middlewares/isAdmin"; 
+
 const app = express();
 
 // Configura CORS
@@ -23,7 +22,7 @@ app.use(
 app.use(bodyParser.json());
 
 app.use("/auth", authRoutes); 
-app.use("/turnos", authenticateToken, turnoRoutes);
+app.use("/turnos", turnoRoutes);
 
 // Manejo de errores
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
