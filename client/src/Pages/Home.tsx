@@ -9,14 +9,12 @@ import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { useSpring, animated } from "react-spring";
 
 interface Turno {
   id: number;
   fecha: string;
   usuarioId: number;
-  confirmado: boolean;
-  deshabilitado?: boolean;
+  estado: "disponible" | "reservado" | "confirmado" | "cancelado" | "deshabilitado";
   cliente?: { nombre: string; apellido: string };
 }
 
@@ -26,33 +24,28 @@ const Home: React.FC = () => {
   const [turnosOcupando, setTurnosOcupando] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; mensaje: string; tipo: "success" | "error" }>({ open: false, mensaje: "", tipo: "success" });
 
-  const horariosManana = ["09:00", "10:00", "11:00", "12:00"];
-  const horariosTarde = ["16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
-  const todosLosHorarios = [...horariosManana, ...horariosTarde];
+  const horarios = [
+    "09:00", "10:00", "11:00", // mañana
+    "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", // tarde
+  ];
+  const todosLosHorarios = [...horarios];
 
   const token = localStorage.getItem("token");
   const usuarioId = Number(localStorage.getItem("usuarioId"));
-  const esAdmin = localStorage.getItem("admin") === "true";
+  const esAdmin = JSON.parse(localStorage.getItem("admin") || "false");
+
 
   const navigate = useNavigate();
   const location = useLocation();
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const animProps = useSpring({
-    from: { opacity: 0, transform: "translateY(-10px)" },
-    to: { opacity: 1, transform: "translateY(0px)" },
-    reset: true,
-    config: { tension: 200, friction: 20 },
-  });
-
-  const fetchTurnos = () => {
+  // 🔹 Fetch turnos solo cuando cambia fecha o token
+  useEffect(() => {
     if (!token) return;
     axios.get<Turno[]>("http://localhost:5000/turnos", { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setTurnos(res.data))
       .catch(err => { console.error(err); setTurnos([]); });
-  };
-
-  useEffect(() => { fetchTurnos(); }, [token, location, fechaSeleccionada]);
+  }, [token, location, fechaSeleccionada]);
 
   const showSnackbar = (mensaje: string, tipo: "success" | "error") => {
     setSnackbar({ open: true, mensaje, tipo });
@@ -84,9 +77,9 @@ const Home: React.FC = () => {
     if (!usuarioId && !esAdmin) return showSnackbar("Usuario no identificado", "error");
 
     const turnoExistente = obtenerTurnoPorHora(hora);
-
-    if ((turnoExistente && (turnoExistente.confirmado || turnoExistente.deshabilitado)) || turnosOcupando.includes(hora)) {
-      return showSnackbar("Ese turno ya está reservado o deshabilitado", "error");
+    if ((turnoExistente && (turnoExistente.estado === "reservado" || turnoExistente.estado === "confirmado")) 
+        || turnosOcupando.includes(hora)) {
+      return showSnackbar("Ese turno no está disponible", "error");
     }
 
     setTurnosOcupando(prev => [...prev, hora]);
@@ -97,57 +90,58 @@ const Home: React.FC = () => {
 
     axios.post(
       "http://localhost:5000/turnos",
-      { fecha: fechaAUTC(fecha), usuarioId, deshabilitado: false },
+      { fecha: fechaAUTC(fecha), usuarioId, estado: "reservado" },
       { headers: { Authorization: `Bearer ${token}` } }
     )
-      .then(() => {
-        showSnackbar("Turno creado!", "success");
-        fetchTurnos();
-        setTurnosOcupando(prev => prev.filter(h => h !== hora));
+      .then(res => {
+        showSnackbar("Turno reservado!", "success");
+        setTurnos(prev => [...prev, res.data as Turno]);
       })
-      .catch(err => {
-        console.error(err);
-        showSnackbar(err.response?.data?.error || "Error al crear turno", "error");
-        setTurnosOcupando(prev => prev.filter(h => h !== hora));
-      });
+      .catch(err => showSnackbar(err.response?.data?.error || "Error al reservar turno", "error"))
+      .then(() => setTurnosOcupando(prev => prev.filter(h => h !== hora)));
   };
 
   const handleDeshabilitarTurno = (turno: Turno | undefined, hora: string) => {
-    if (turno?.confirmado || turno?.deshabilitado) return;
-
     const [horas, minutos] = hora.split(":").map(Number);
     const fecha = new Date(fechaSeleccionada);
     fecha.setHours(horas, minutos, 0, 0);
 
     if (turno) {
-      // Turno existente
-      setTurnos(prev => prev.map(t => t.id === turno.id ? { ...t, deshabilitado: true } : t));
-      axios.put(`http://localhost:5000/turnos/deshabilitar/${turno.id}`, {}, { headers: { Authorization: `Bearer ${token}` } })
-        .then(fetchTurnos)
-        .catch(err => {
-          console.error(err);
-          showSnackbar("Error al deshabilitar el turno", "error");
-          setTurnos(prev => prev.map(t => t.id === turno.id ? { ...t, deshabilitado: false } : t));
-        });
+      axios.put(`http://localhost:5000/turnos/${turno.id}/deshabilitar`, {}, { headers: { Authorization: `Bearer ${token}` } })
+        .then(() => {
+          showSnackbar("Turno deshabilitado", "success");
+          setTurnos(prev => prev.map(t => t.id === turno.id ? { ...t, estado: "deshabilitado" } : t));
+        })
+        .catch(() => showSnackbar("Error al deshabilitar turno", "error"));
     } else {
-      // Crear turno “fantasma” deshabilitado
       axios.post(
         "http://localhost:5000/turnos",
-        { fecha: fechaAUTC(fecha), usuarioId: 0, deshabilitado: true },
+        { fecha: fechaAUTC(fecha), usuarioId: 0, estado: "deshabilitado" },
         { headers: { Authorization: `Bearer ${token}` } }
-      )
-        .then(fetchTurnos)
-        .catch(err => {
-          console.error(err);
-          showSnackbar("Error al deshabilitar el turno", "error");
-        });
+      ).then(res => {
+        showSnackbar("Turno deshabilitado", "success");
+        setTurnos(prev => [...prev, res.data as Turno]);
+      })
+      .catch(() => showSnackbar("Error al deshabilitar turno", "error"));
     }
   };
 
+  const handleHabilitarTurno = (turno: Turno) => {
+    axios.put(`http://localhost:5000/turnos/${turno.id}/habilitar`, {}, { headers: { Authorization: `Bearer ${token}` } })
+      .then(() => {
+        showSnackbar("Turno habilitado", "success");
+        setTurnos(prev => prev.map(t => t.id === turno.id ? { ...t, estado: "disponible" } : t));
+      })
+      .catch(() => showSnackbar("Error al habilitar turno", "error"));
+  };
+
   const handleCancelarTurno = (turno: Turno) => {
-    axios.put(`http://localhost:5000/turnos/cancelar/${turno.id}`, {}, { headers: { Authorization: `Bearer ${token}` } })
-      .then(() => { showSnackbar("Turno cancelado y disponible nuevamente", "success"); fetchTurnos(); })
-      .catch(err => console.error(err));
+    axios.put(`http://localhost:5000/turnos/${turno.id}/cancelar`, {}, { headers: { Authorization: `Bearer ${token}` } })
+      .then(() => {
+        showSnackbar("Turno cancelado", "success");
+        setTurnos(prev => prev.map(t => t.id === turno.id ? { ...t, estado: "disponible" } : t));
+      })
+      .catch(() => showSnackbar("Error al cancelar turno", "error"));
   };
 
   const handleCambioFecha = (dias: number) => {
@@ -168,7 +162,7 @@ const Home: React.FC = () => {
     return fechaTurno.getFullYear() === fechaSel.getFullYear() &&
            fechaTurno.getMonth() === fechaSel.getMonth() &&
            fechaTurno.getDate() === fechaSel.getDate() &&
-           t.confirmado;
+           t.estado === "confirmado";
   });
 
   return (
@@ -186,52 +180,68 @@ const Home: React.FC = () => {
           <List>
             {todosLosHorarios.map(horario => {
               const turno = obtenerTurnoPorHora(horario);
-              const ocupado = !!(turno?.deshabilitado || turno?.confirmado || turnosOcupando.includes(horario));
+              const ocupado = turno && (turno.estado === "reservado" || turno.estado === "confirmado");
+              const deshabilitado = turno && turno.estado === "deshabilitado";
+
+              // 🔹 Deshabilitar domingos y lunes
+              const fechaSel = new Date(fechaSeleccionada);
+              const esNoLaborable = fechaSel.getDay() === 0 || fechaSel.getDay() === 1;
 
               return (
-                <animated.div key={horario} style={animProps}>
-                  <ListItem sx={{ flexDirection: "column", alignItems: "flex-start" }}>
-                    <ListItemText
-                      primary={<Typography sx={{ fontWeight: "bold", color: "#fff" }}>Hora: {horario}</Typography>}
-                      secondary={<Typography sx={{ color: ocupado ? "#ff5252" : "#fff" }}>{ocupado ? "No disponible" : "Disponible"}</Typography>}
-                    />
-                    <Box display="flex" gap={1} mt={1}>
+                <ListItem key={horario} sx={{ flexDirection: "column", alignItems: "flex-start" }}>
+                  <ListItemText
+                    primary={<Typography sx={{ fontWeight: "bold", color: "#fff" }}>Hora: {horario}</Typography>}
+                    secondary={<Typography sx={{ color: "#fff" }}>
+                      {esNoLaborable ? "No laborable" : ocupado ? `No disponible (${turno?.estado})` : deshabilitado ? "Deshabilitado" : "Disponible"}
+                    </Typography>}
+                  />
+                  <Box display="flex" gap={1} mt={1}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      color="primary"
+                      disabled={ocupado || deshabilitado || turnosOcupando.includes(horario) || esNoLaborable}
+                      onClick={() => handleCrearTurno(horario)}
+                    >
+                      {esNoLaborable ? "No laborable" : ocupado || deshabilitado ? turno?.estado : "Reservar"}
+                    </Button>
+
+                    {esAdmin && !deshabilitado && !esNoLaborable && (
                       <Button
-                        variant="contained"
+                        variant="outlined"
                         size="small"
-                        color="primary"
+                        color="error"
+                        onClick={() => handleDeshabilitarTurno(turno, horario)}
                         disabled={ocupado}
-                        onClick={() => handleCrearTurno(horario)}
                       >
-                        {ocupado ? "Reservado" : "Reservar"}
+                        Deshabilitar
                       </Button>
+                    )}
 
-                      {esAdmin && (
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color={turno?.deshabilitado ? "warning" : "error"}
-                          disabled={turno?.confirmado || turno?.deshabilitado}
-                          onClick={() => handleDeshabilitarTurno(turno, horario)}
-                        >
-                          {turno?.deshabilitado ? "Deshabilitado" : "Deshabilitar"}
-                        </Button>
-                      )}
+                    {esAdmin && deshabilitado && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="success"
+                        onClick={() => handleHabilitarTurno(turno)}
+                      >
+                        Habilitar
+                      </Button>
+                    )}
 
-                      {esAdmin && turno && (turno.confirmado || turno.deshabilitado) && (
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="warning"
-                          onClick={() => handleCancelarTurno(turno)}
-                        >
-                          Cancelar
-                        </Button>
-                      )}
-                    </Box>
-                  </ListItem>
-                  <Divider sx={{ bgcolor: "#424242" }} />
-                </animated.div>
+                    {esAdmin && turno && turno.estado !== "disponible" && turno.estado !== "deshabilitado" && !esNoLaborable && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="warning"
+                        onClick={() => handleCancelarTurno(turno)}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
+                  </Box>
+                  <Divider sx={{ bgcolor: "#424242", width: "100%", mt: 1 }} />
+                </ListItem>
               );
             })}
           </List>
@@ -249,12 +259,12 @@ const Home: React.FC = () => {
         <CardContent sx={{ maxHeight: 200, overflowY: "auto" }}>
           <Typography sx={{ fontWeight: "bold", color: "#90caf9", mb: 1 }}>Turnos Confirmados</Typography>
           <List>
-            {turnosConfirmados.length === 0 && <Typography sx={{ color: "#e0e0e0" }}>No hay turnos confirmados</Typography>}
+            {turnosConfirmados.length === 0 && <Typography sx={{ color: "#fff" }}>No hay turnos confirmados</Typography>}
             {turnosConfirmados.map(turno => (
               <ListItem key={turno.id}>
                 <ListItemText
                   primary={<Typography sx={{ fontWeight: "bold", color: "#fff" }}>{new Date(turno.fecha).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}</Typography>}
-                  secondary={turno.cliente ? <Typography sx={{ color: "#e0e0e0" }}>{turno.cliente.nombre} {turno.cliente.apellido}</Typography> : null}
+                  secondary={turno.cliente ? <Typography sx={{ color: "#fff" }}>{turno.cliente.nombre} {turno.cliente.apellido}</Typography> : null}
                 />
               </ListItem>
             ))}

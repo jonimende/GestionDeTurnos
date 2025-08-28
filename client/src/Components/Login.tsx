@@ -1,61 +1,176 @@
 // client/src/components/auth/Login.tsx
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Container,
+  Paper,
+  Link,
+  FormControlLabel,
+  Checkbox,
+  Alert,
+  CircularProgress,
+} from "@mui/material";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 
-export default function Login() {
+const Login: React.FC = () => {
   const [nombre, setNombre] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError(null);
+    setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/auth/login", {
+      const response = await fetch("http://localhost:5000/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre, password }),
       });
 
-      const data = await res.json();
+      const data = await response.json();
 
-      if (!res.ok) {
-        setError(data.error || "Error al iniciar sesión");
-        return;
-      }
-
-      // Guardamos token y usuarioId en localStorage
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("usuarioId", data.usuario.id.toString());
-
-      localStorage.setItem("rol", data.usuario.admin ? "admin" : "user");
-      navigate("/home");
+      if (response.ok && data.token) {
+          localStorage.setItem("token", data.token);
+          localStorage.setItem("usuarioId", data.usuario.id.toString());
+          localStorage.setItem("admin", JSON.stringify(data.usuario.admin)); 
+          navigate("/home");
+        } else {
+          setError(data.error || "Error al iniciar sesión");
+        }
     } catch (err) {
-      setError("Error de conexión con el servidor");
       console.error(err);
+      setError("Error de conexión con el servidor");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <h2>Login</h2>
-      <form onSubmit={handleLogin}>
-        <input
-          placeholder="Nombre"
-          value={nombre}
-          onChange={e => setNombre(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-        />
-        <button type="submit">Iniciar sesión</button>
-      </form>
-      {error && <p>{error}</p>}
-    </div>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundImage: "url('https://source.unsplash.com/featured/?barbershop')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        bgcolor: "rgba(0,0,0,0.7)",
+        backgroundBlendMode: "darken",
+      }}
+    >
+      <Container maxWidth="xs">
+        <Paper
+          elevation={12}
+          sx={{
+            p: 4,
+            borderRadius: 3,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            backdropFilter: "blur(8px)",
+            bgcolor: "rgba(17, 24, 39, 0.85)",
+            color: "white",
+          }}
+        >
+          <LockOutlinedIcon sx={{ fontSize: 48, color: "#3b82f6", mb: 2 }} />
+          <Typography
+            component="h1"
+            variant="h4"
+            sx={{ mb: 3, fontWeight: "bold", color: "white" }}
+          >
+            Iniciar Sesión
+          </Typography>
+          <Box component="form" onSubmit={handleLogin} sx={{ width: "100%" }}>
+            <TextField
+              variant="outlined"
+              margin="normal"
+              required
+              fullWidth
+              id="nombre"
+              label="Nombre"
+              autoComplete="nombre"
+              autoFocus
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              sx={{
+                mb: 2,
+                input: { color: "white" },
+                label: { color: "#9ca3af" },
+                "& .MuiOutlinedInput-root": {
+                  "& fieldset": { borderColor: "#3b82f6" },
+                  "&:hover fieldset": { borderColor: "#60a5fa" },
+                  "&.Mui-focused fieldset": { borderColor: "#3b82f6" },
+                },
+              }}
+            />
+            <TextField
+              variant="outlined"
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Contraseña"
+              type="password"
+              id="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              sx={{
+                mb: 2,
+                input: { color: "white" },
+                label: { color: "#9ca3af" },
+                "& .MuiOutlinedInput-root": {
+                  "& fieldset": { borderColor: "#3b82f6" },
+                  "&:hover fieldset": { borderColor: "#60a5fa" },
+                  "&.Mui-focused fieldset": { borderColor: "#3b82f6" },
+                },
+              }}
+            />
+
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              disabled={loading}
+              sx={{
+                mt: 3,
+                mb: 2,
+                py: 1.5,
+                fontSize: "1rem",
+                fontWeight: "bold",
+                borderRadius: 2,
+                backgroundColor: "#3b82f6",
+                "&:hover": { backgroundColor: "#2563eb" },
+              }}
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : "Iniciar Sesión"}
+            </Button>
+
+            <Box sx={{ mt: 2, textAlign: "center" }}>
+              <Typography variant="body2" sx={{ color: "#d1d5db" }}>
+                ¿No tienes una cuenta?{" "}
+                <Link href="/register" sx={{ color: "#3b82f6", fontWeight: "bold" }}>
+                  Regístrate aquí
+                </Link>
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      </Container>
+    </Box>
   );
-}
+};
+
+export default Login;

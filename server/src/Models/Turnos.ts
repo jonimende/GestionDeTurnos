@@ -5,10 +5,9 @@ import { Usuario } from "./Usuario";
 class Turno extends Model {
   public id!: number;
   public fecha!: Date;
-  public usuarioId!: number|null;
-  public confirmado!: boolean; // <-- agregar este campo
-  public ocupado!: boolean;
-  public deshabilitado!: boolean;
+  public usuarioId!: number | null;
+  public estado!: "disponible" | "reservado" | "confirmado" | "cancelado" | "deshabilitado";
+
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -17,39 +16,31 @@ class Turno extends Model {
 
 Turno.init(
   {
-    id: { 
-      type: DataTypes.INTEGER, 
-      autoIncrement: true, 
-      primaryKey: true 
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
     },
-    fecha: { 
+    fecha: {
       type: DataTypes.DATE,
-       allowNull: false
-    },
-    usuarioId: { 
-      type: DataTypes.INTEGER, 
-      allowNull: true, 
-      field: "usuario_id" 
-    },
-    confirmado: { 
-      type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: false 
-    }, 
-    ocupado: {  
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
     },
-    deshabilitado: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false, // por defecto no está deshabilitado
+    usuarioId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "usuario_id",
+    },
+    estado: {
+      type: DataTypes.ENUM("disponible", "reservado", "confirmado", "cancelado", "deshabilitado"),
+      allowNull: false,
+      defaultValue: "disponible",
     },
   },
   {
     sequelize,
     modelName: "Turno",
     tableName: "turnos",
-    timestamps: false
+    timestamps: false,
   }
 );
 
