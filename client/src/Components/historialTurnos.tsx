@@ -1,88 +1,124 @@
+// client/src/components/turnos/HistorialTurnos.tsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-
-interface Cliente {
-  nombre: string;
-  apellido: string;
-  telefono: string;
-}
+import {
+  Box,
+  Container,
+  Paper,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  CircularProgress,
+  Alert,
+} from "@mui/material";
+import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 
 interface Turno {
   id: number;
   fecha: string;
   confirmado: boolean;
-  cliente: Cliente;
 }
 
 const HistorialTurnos: React.FC = () => {
   const [turnos, setTurnos] = useState<Turno[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const token = localStorage.getItem("token");
+  const usuarioId = localStorage.getItem("usuarioId");
+
+  const fetchHistorial = () => {
+    if (!token || !usuarioId) return;
+    setLoading(true);
+    setError(null);
+
+    axios
+      .get<Turno[]>(`http://localhost:5000/turnos/historial`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setTurnos(res.data))
+      .catch(() => setError("Error al cargar el historial de turnos"))
+      .then(() => setLoading(false));
+  };
 
   useEffect(() => {
-    const fetchHistorial = async () => {
-      try {
-        const token = localStorage.getItem("token"); // asumimos que guardaste el JWT en localStorage
-        const res = await axios.get<Turno[]>("http://localhost:5000/turnos/historial", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setTurnos(res.data);
-      } catch (error) {
-        console.error("Error al traer historial:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchHistorial();
-  }, []);
-
-  if (loading) return <p className="text-center mt-10">Cargando historial...</p>;
+  }, [token, usuarioId]);
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4 text-gray-700">
-        Historial de Clientes (Turnos)
-      </h2>
-      <div className="overflow-x-auto shadow-lg rounded-2xl">
-        <table className="min-w-full bg-white border border-gray-200 rounded-xl">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="py-2 px-4 border-b">Cliente</th>
-              <th className="py-2 px-4 border-b">Teléfono</th>
-              <th className="py-2 px-4 border-b">Fecha</th>
-              <th className="py-2 px-4 border-b">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {turnos.map((turno) => (
-              <tr key={turno.id} className="hover:bg-gray-50">
-                <td className="py-2 px-4 border-b">
-                  {turno.cliente?.nombre} {turno.cliente?.apellido}
-                </td>
-                <td className="py-2 px-4 border-b">{turno.cliente?.telefono}</td>
-                <td className="py-2 px-4 border-b">
-                  {new Date(turno.fecha).toLocaleString("es-AR")}
-                </td>
-                <td className="py-2 px-4 border-b">
-                  {turno.confirmado ? (
-                    <span className="text-green-600 font-semibold">Confirmado</span>
-                  ) : (
-                    <span className="text-red-600 font-semibold">Pendiente</span>
-                  )}
-                </td>
-              </tr>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundImage:
+          "url('https://source.unsplash.com/featured/?barbershop,history')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        bgcolor: "rgba(0,0,0,0.7)",
+        backgroundBlendMode: "darken",
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper
+          elevation={12}
+          sx={{
+            p: 4,
+            borderRadius: 3,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            backdropFilter: "blur(8px)",
+            bgcolor: "rgba(17, 24, 39, 0.85)",
+            color: "white",
+          }}
+        >
+          <EventAvailableIcon sx={{ fontSize: 48, color: "#3b82f6", mb: 2 }} />
+          <Typography
+            component="h1"
+            variant="h4"
+            sx={{ mb: 3, fontWeight: "bold", color: "white" }}
+          >
+            Historial de Turnos
+          </Typography>
+
+          {loading && <CircularProgress sx={{ color: "#3b82f6", mb: 2 }} />}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2, width: "100%" }}>
+              {error}
+            </Alert>
+          )}
+          {!loading && turnos.length === 0 && (
+            <Typography variant="body1" sx={{ color: "#d1d5db" }}>
+              No tenés turnos en tu historial
+            </Typography>
+          )}
+
+          <List sx={{ width: "100%" }}>
+            {turnos.map((t) => (
+              <React.Fragment key={t.id}>
+                <ListItem>
+                  <ListItemText
+                    primary={new Date(t.fecha).toLocaleString()}
+                    secondary={
+                      t.confirmado ? "✅ Confirmado" : "⌛ Pendiente de confirmación"
+                    }
+                    primaryTypographyProps={{ sx: { color: "white" } }}
+                    secondaryTypographyProps={{
+                      sx: { color: t.confirmado ? "#22c55e" : "#facc15" },
+                    }}
+                  />
+                </ListItem>
+                <Divider sx={{ bgcolor: "rgba(255,255,255,0.1)" }} />
+              </React.Fragment>
             ))}
-            {turnos.length === 0 && (
-              <tr>
-                <td colSpan={4} className="text-center py-4 text-gray-500">
-                  No hay turnos en el historial.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </List>
+        </Paper>
+      </Container>
+    </Box>
   );
 };
 

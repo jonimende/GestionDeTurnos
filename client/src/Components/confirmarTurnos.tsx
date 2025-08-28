@@ -1,5 +1,22 @@
+// client/src/components/turnos/ConfirmarTurnos.tsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import {
+  Box,
+  Button,
+  Container,
+  Paper,
+  Typography,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  IconButton,
+  Alert,
+} from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CancelIcon from "@mui/icons-material/Cancel";
 
 interface Turno {
   id: number;
@@ -15,63 +32,165 @@ interface Turno {
 
 const ConfirmarTurnos: React.FC = () => {
   const [turnos, setTurnos] = useState<Turno[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const token = localStorage.getItem("token");
-  const esAdmin = localStorage.getItem("rol") === "admin";
+  const esAdmin = localStorage.getItem("admin") === "true";
 
-  const fetchTurnosPendientes = () => {
+  const fetchTurnosPendientes = async () => {
     if (!token || !esAdmin) return;
+    setLoading(true);
+    setError(null);
 
-    axios
-      .get<Turno[]>("http://localhost:5000/turnos/pendientes", {
+    try {
+      const res = await axios.get<Turno[]>("http://localhost:5000/turnos/pendientes", {
         headers: { Authorization: `Bearer ${token}` },
-      })
-      .then(res => setTurnos(res.data))
-      .catch(err => console.error(err));
+      });
+      setTurnos(res.data);
+    } catch (err) {
+      console.error(err);
+      setError("Error al cargar los turnos");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchTurnosPendientes();
   }, [token, esAdmin]);
 
-  if (!esAdmin) return <p>No tenés permisos para acceder a esta sección</p>;
+  if (!esAdmin)
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          bgcolor: "black",
+          color: "white",
+        }}
+      >
+        <Typography variant="h5">No tenés permisos para acceder a esta sección</Typography>
+      </Box>
+    );
 
-  const handleConfirmar = (id: number) => {
+  const handleConfirmar = async (id: number) => {
     if (!token) return;
-
-    axios
-      .put(
+    try {
+      await axios.put(
         `http://localhost:5000/turnos/${id}/confirmar`,
-        {}, // body vacío
+        {},
         { headers: { Authorization: `Bearer ${token}` } }
-      )
-      .then(() => fetchTurnosPendientes()) // refresca la lista de pendientes
-      .catch(err => console.error(err));
+      );
+      fetchTurnosPendientes();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleCancelar = (id: number) => {
+  const handleCancelar = async (id: number) => {
     if (!token) return;
-
-    axios
-      .delete(`http://localhost:5000/turnos/${id}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(() => fetchTurnosPendientes())
-      .catch(err => console.error(err));
+    try {
+      await axios.delete(`http://localhost:5000/turnos/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchTurnosPendientes();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
-    <div>
-      <h1>Confirmar / Cancelar Turnos</h1>
-      {turnos.length === 0 && <p>No hay turnos pendientes</p>}
-      <ul>
-        {turnos.map(t => (
-          <li key={t.id}>
-            {new Date(t.fecha).toLocaleString()} -{" "}
-            {t.cliente ? `${t.cliente.nombre} ${t.cliente.apellido}` : "Disponible"}{" "}
-            <button onClick={() => handleConfirmar(t.id)}>Confirmar</button>
-            <button onClick={() => handleCancelar(t.id)}>Cancelar</button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundImage: "url('https://source.unsplash.com/featured/?barbershop,appointment')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        bgcolor: "rgba(0,0,0,0.7)",
+        backgroundBlendMode: "darken",
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper
+          elevation={12}
+          sx={{
+            p: 4,
+            borderRadius: 3,
+            backdropFilter: "blur(8px)",
+            bgcolor: "rgba(17, 24, 39, 0.85)",
+            color: "white",
+          }}
+        >
+          <Typography
+            variant="h4"
+            sx={{ mb: 3, fontWeight: "bold", textAlign: "center", color: "white" }}
+          >
+            Confirmar / Cancelar Turnos
+          </Typography>
+
+          {loading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" sx={{ py: 5 }}>
+              <CircularProgress color="inherit" />
+            </Box>
+          ) : error ? (
+            <Alert severity="error">{error}</Alert>
+          ) : turnos.length === 0 ? (
+            <Typography align="center" sx={{ color: "#9ca3af" }}>
+              No hay turnos pendientes
+            </Typography>
+          ) : (
+            <List>
+              {turnos.map((t) => (
+                <ListItem
+                  key={t.id}
+                  sx={{
+                    bgcolor: "rgba(255,255,255,0.05)",
+                    mb: 2,
+                    borderRadius: 2,
+                  }}
+                >
+                  <ListItemText
+                    primary={`${new Date(t.fecha).toLocaleString()}`}
+                    secondary={
+                      t.cliente
+                        ? `${t.cliente.nombre} ${t.cliente.apellido} - ${t.cliente.telefono}`
+                        : "Disponible"
+                    }
+                    primaryTypographyProps={{ color: "white" }}
+                    secondaryTypographyProps={{ color: "#d1d5db" }}
+                  />
+                  <ListItemSecondaryAction>
+                    <IconButton
+                      edge="end"
+                      aria-label="confirmar"
+                      onClick={() => handleConfirmar(t.id)}
+                      sx={{ color: "#3b82f6", mr: 1 }}
+                    >
+                      <CheckCircleIcon />
+                    </IconButton>
+                    <IconButton
+                      edge="end"
+                      aria-label="cancelar"
+                      onClick={() => handleCancelar(t.id)}
+                      sx={{ color: "#ef4444" }}
+                    >
+                      <CancelIcon />
+                    </IconButton>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </Paper>
+      </Container>
+    </Box>
   );
 };
 

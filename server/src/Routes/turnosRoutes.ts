@@ -23,13 +23,20 @@ router.get("/pendientes", authenticateToken, async (req, res, next) => {
   await turnoController.listarTurnosPendientes(req, res, next);
 });
 
-// Confirmar turno → solo admin
 router.put("/:id/confirmar", authenticateToken, isAdmin, async (req, res, next) => {
   await turnoController.confirmarTurno(req, res, next);
 });
 
 router.put("/:id/deshabilitar", authenticateToken, isAdmin, async (req, res) => {
   await turnoController.deshabilitarTurno(req, res);
+});
+
+router.put("/:id/cancelar", authenticateToken, isAdmin, async (req, res) => {
+  await turnoController.cancelarTurno(req, res);
+});
+
+router.put("/:id/habilitar", authenticateToken, isAdmin, async (req, res) => {
+  await turnoController.habilitarTurno(req, res);
 });
 
 router.delete("/:id", authenticateToken, isAdmin, async (req, res, next) => {
