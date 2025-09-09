@@ -38,7 +38,7 @@ const HistorialTurnos: React.FC = () => {
     setError(null);
 
     axios
-      .get<Turno[]>(`http://localhost:5000/turnos/historial`, {
+      .get<Turno[]>(`http://gestiondeturnos-production.up.railway.app/turnos/historial`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setTurnos(res.data))
