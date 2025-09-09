@@ -44,7 +44,7 @@ const ConfirmarTurnos: React.FC = () => {
     setError(null);
 
     try {
-      const res = await axios.get<Turno[]>("http://localhost:5000/turnos/pendientes", {
+      const res = await axios.get<Turno[]>("http://gestiondeturnos-production.up.railway.app/turnos/pendientes", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setTurnos(res.data);
@@ -80,7 +80,7 @@ const ConfirmarTurnos: React.FC = () => {
     if (!token) return;
     try {
       await axios.put(
-        `http://localhost:5000/turnos/${id}/confirmar`,
+        `http://gestiondeturnos-production.up.railway.app/turnos/${id}/confirmar`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -93,7 +93,7 @@ const ConfirmarTurnos: React.FC = () => {
   const handleCancelar = async (id: number) => {
     if (!token) return;
     try {
-      await axios.delete(`http://localhost:5000/turnos/${id}`, {
+      await axios.delete(`http://gestiondeturnos-production.up.railway.app/turnos/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchTurnosPendientes();
