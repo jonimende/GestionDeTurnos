@@ -22,7 +22,7 @@ Turno.init(
       primaryKey: true,
     },
     fecha: {
-      type: DataTypes.DATE,
+      type: "TIMESTAMP",
       allowNull: false,
     },
     usuarioId: {

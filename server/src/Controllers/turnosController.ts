@@ -1,11 +1,34 @@
+// src/controllers/turnoController.ts
 import { Request, Response, NextFunction } from "express";
 import Turno from "../Models/Turnos";
 import { Usuario } from "../Models/Usuario";
 import { Op } from "sequelize";
+import {
+  notifyBarberNewBooking,
+  notifyClientConfirmed,
+  notifyClientCancelled,
+} from "../Utils/notifications";
 
 interface AuthRequest extends Request {
   user?: any;
 }
+
+const BARBER_PHONE = process.env.BARBER_PHONE!;
+
+// 🔹 Convierte string de frontend a Date local exacta
+const parseLocalDate = (fechaStr: string) => {
+  const [datePart, timePart] = fechaStr.includes("T") ? fechaStr.split("T") : fechaStr.split(" ");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+  return new Date(year, month - 1, day, hour, minute, 0, 0);
+};
+
+// 🔹 Convierte fecha UTC guardada en DB a hora local Argentina
+const toLocalTime = (fecha: Date) => {
+  return new Date(
+    fecha.toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" })
+  );
+};
 
 export const turnoController = {
   crearTurno: async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -16,22 +39,22 @@ export const turnoController = {
     }
 
     try {
-      // Solo buscamos usuario si no es 0
+      let cliente;
       if (usuarioId !== 0) {
-        const usuario = await Usuario.findByPk(usuarioId);
-        if (!usuario) return res.status(404).json({ error: "Usuario no encontrado" });
+        cliente = await Usuario.findByPk(usuarioId);
+        if (!cliente) return res.status(404).json({ error: "Usuario no encontrado" });
       }
 
-      const fechaObj = new Date(fecha);
-      fechaObj.setSeconds(0, 0); // fijamos segundos y milisegundos
+      // Interpretar la fecha como local exacta
+      const fechaObj = parseLocalDate(fecha);
       const fechaFin = new Date(fechaObj);
       fechaFin.setMinutes(fechaFin.getMinutes() + 1);
 
-      // 🔹 Solo chequeamos turnos activos (reservado o confirmado)
+      // Verificar turno existente
       const turnoExistente = await Turno.findOne({
         where: {
           fecha: { [Op.gte]: fechaObj, [Op.lt]: fechaFin },
-          estado: { [Op.in]: ["reservado", "confirmado"] }
+          estado: { [Op.in]: ["reservado", "confirmado"] },
         },
       });
 
@@ -39,21 +62,28 @@ export const turnoController = {
         return res.status(400).json({ error: "El horario ya está reservado" });
       }
 
-      // Lógica de estado
+      // Determinar estado
       let estado: Turno["estado"] = "disponible";
-      if (deshabilitado) {
-        estado = "deshabilitado";
-      } else if (usuarioId && usuarioId !== 0) {
-        estado = "reservado";
-      }
+      if (deshabilitado) estado = "deshabilitado";
+      else if (usuarioId && usuarioId !== 0) estado = "reservado";
 
+      // Crear turno
       const nuevoTurno = await Turno.create({
         fecha: fechaObj,
         usuarioId: usuarioId === 0 ? null : usuarioId,
         estado,
       });
 
-      return res.status(201).json({ message: "Turno creado", turno: nuevoTurno });
+      // Notificación al peluquero
+      if (estado === "reservado" && cliente) {
+        const nombreCliente = `${cliente.nombre} ${cliente.apellido}`;
+        await notifyBarberNewBooking(BARBER_PHONE, nombreCliente, fechaObj);
+      }
+
+      return res.status(201).json({
+        message: "Turno creado",
+        turno: { ...nuevoTurno.toJSON(), fecha: toLocalTime(nuevoTurno.fecha) },
+      });
     } catch (error) {
       console.error("Error crearTurno:", error);
       return res.status(500).json({ error: "Error interno al crear el turno" });
@@ -66,7 +96,13 @@ export const turnoController = {
         include: [{ model: Usuario, as: "cliente", attributes: ["nombre", "apellido", "telefono"] }],
         order: [["fecha", "ASC"]],
       });
-      return res.json(turnos);
+
+      const turnosLocales = turnos.map(t => ({
+        ...t.toJSON(),
+        fecha: toLocalTime(t.fecha),
+      }));
+
+      return res.json(turnosLocales);
     } catch (error) {
       console.error(error);
       next(error);
@@ -80,7 +116,13 @@ export const turnoController = {
         include: [{ model: Usuario, as: "cliente", attributes: ["nombre", "apellido", "telefono"] }],
         order: [["fecha", "ASC"]],
       });
-      return res.json(turnos);
+
+      const turnosLocales = turnos.map(t => ({
+        ...t.toJSON(),
+        fecha: toLocalTime(t.fecha),
+      }));
+
+      return res.json(turnosLocales);
     } catch (error) {
       console.error(error);
       next(error);
@@ -102,12 +144,11 @@ export const turnoController = {
         order: [["fecha", "DESC"]],
       });
 
-      // Mapear los turnos para que el frontend tenga `confirmado` como boolean
       const turnosFormateados = turnos.map(t => ({
         id: t.id,
-        fecha: t.fecha,
-        confirmado: t.estado === "confirmado", 
-        cliente: t.cliente
+        fecha: toLocalTime(t.fecha),
+        confirmado: t.estado === "confirmado",
+        cliente: t.cliente,
       }));
 
       return res.json(turnosFormateados);
@@ -132,8 +173,15 @@ export const turnoController = {
       if (!turno) return res.status(404).json({ error: "Turno no encontrado" });
 
       await turno.update({ estado: "confirmado" });
+
+      if (turno.cliente) {
+        const nombreCliente = `${turno.cliente.nombre} ${turno.cliente.apellido}`;
+        await notifyClientConfirmed(turno.cliente.telefono, nombreCliente, turno.fecha);
+      }
+
       return res.json({
         message: `Turno confirmado para ${turno.cliente?.nombre} ${turno.cliente?.apellido}`,
+        turno: { ...turno.toJSON(), fecha: toLocalTime(turno.fecha) },
       });
     } catch (error) {
       console.error(error);
@@ -144,8 +192,16 @@ export const turnoController = {
   eliminarTurno: async (req: AuthRequest, res: Response, next: NextFunction) => {
     const { id } = req.params;
     try {
-      const turno = await Turno.findByPk(id);
+      const turno = await Turno.findByPk(id, {
+        include: [{ model: Usuario, as: "cliente", attributes: ["nombre", "apellido", "telefono"] }],
+      });
+
       if (!turno) return res.status(404).json({ error: "Turno no encontrado" });
+
+      if (turno.cliente) {
+        const nombreCliente = `${turno.cliente.nombre} ${turno.cliente.apellido}`;
+        await notifyClientCancelled(turno.cliente.telefono, nombreCliente, turno.fecha);
+      }
 
       await turno.destroy();
       return res.json({ message: "Turno eliminado" });
@@ -164,7 +220,10 @@ export const turnoController = {
       turno.estado = "deshabilitado";
       await turno.save();
 
-      return res.json({ message: "Turno deshabilitado correctamente", turno });
+      return res.json({
+        message: "Turno deshabilitado correctamente",
+        turno: { ...turno.toJSON(), fecha: toLocalTime(turno.fecha) },
+      });
     } catch (error) {
       return res.status(500).json({ message: "Error al deshabilitar turno", error });
     }
@@ -179,7 +238,10 @@ export const turnoController = {
       turno.estado = "disponible";
       await turno.save();
 
-      return res.json({ message: "Turno habilitado correctamente", turno });
+      return res.json({
+        message: "Turno habilitado correctamente",
+        turno: { ...turno.toJSON(), fecha: toLocalTime(turno.fecha) },
+      });
     } catch (error) {
       return res.status(500).json({ message: "Error al habilitar turno", error });
     }
@@ -188,15 +250,27 @@ export const turnoController = {
   cancelarTurno: async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const turno = await Turno.findByPk(id);
+      const turno = await Turno.findByPk(id, {
+        include: [{ model: Usuario, as: "cliente", attributes: ["nombre", "apellido", "telefono"] }],
+      });
+
       if (!turno) return res.status(404).json({ message: "Turno no encontrado" });
+
+      if (turno.cliente) {
+        const nombreCliente = `${turno.cliente.nombre} ${turno.cliente.apellido}`;
+        await notifyClientCancelled(turno.cliente.telefono, nombreCliente, turno.fecha);
+      }
 
       turno.estado = "cancelado";
       turno.usuarioId = null;
       await turno.save();
 
-      return res.json({ message: "Turno cancelado correctamente", turno });
+      return res.json({
+        message: "Turno cancelado correctamente",
+        turno: { ...turno.toJSON(), fecha: toLocalTime(turno.fecha) },
+      });
     } catch (error) {
+      console.error("Error cancelarTurno:", error);
       return res.status(500).json({ message: "Error al cancelar turno", error });
     }
   },
