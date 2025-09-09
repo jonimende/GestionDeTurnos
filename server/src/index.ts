@@ -6,6 +6,7 @@ import cors from "cors";
 import { sequelize } from "./db";
 import authRoutes from "./Routes/authRoutes";
 import turnoRoutes from "./Routes/turnosRoutes";
+import notifyRoutes from "./Routes/notifyRoutes";
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use(bodyParser.json());
 
 app.use("/auth", authRoutes); 
 app.use("/turnos", turnoRoutes);
+app.use("/notify", notifyRoutes);
 
 // Manejo de errores
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
