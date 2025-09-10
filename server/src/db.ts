@@ -5,5 +5,11 @@ dotenv.config();
 
 export const sequelize = new Sequelize(process.env.DATABASE_URL as string, {
   dialect: 'postgres',
-  logging: false, // quita logs de SQL para desarrollo
+  logging: false, // opcional
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false, // necesario para Railway
+    },
+  },
 });
