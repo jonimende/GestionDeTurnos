@@ -1,5 +1,6 @@
 // client/src/components/turnos/ConfirmarTurnos.tsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import axios from "axios";
 import {
   Box,
@@ -34,6 +35,8 @@ const ConfirmarTurnos: React.FC = () => {
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const navigate = useNavigate();
 
   const token = localStorage.getItem("token");
   const esAdmin = localStorage.getItem("admin") === "true";
@@ -188,6 +191,24 @@ const ConfirmarTurnos: React.FC = () => {
               ))}
             </List>
           )}
+          <Box display="flex" justifyContent="center" mt={4}>
+            <Button
+              variant="contained"
+              onClick={() => navigate("https://gestion-de-turnos-beta.vercel.app/home")}
+              sx={{
+                px: 4,
+                py: 1.5,
+                fontWeight: "bold",
+                fontSize: "1rem",
+                borderRadius: 2,
+                textTransform: "none",
+                backgroundColor: "#3b82f6", // azul suave
+                "&:hover": { backgroundColor: "#2563eb" },
+              }}
+            >
+              Volver al Inicio
+            </Button>
+          </Box>
         </Paper>
       </Container>
     </Box>

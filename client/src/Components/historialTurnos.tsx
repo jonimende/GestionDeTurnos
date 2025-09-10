@@ -1,5 +1,6 @@
 // client/src/components/turnos/HistorialTurnos.tsx
 import React, { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router";
 import axios from "axios";
 import {
   Box,
@@ -14,6 +15,7 @@ import {
   Alert,
   Card,
   CardContent,
+  Button,
 } from "@mui/material";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -31,6 +33,8 @@ const HistorialTurnos: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const token = localStorage.getItem("token");
   const usuarioId = localStorage.getItem("usuarioId");
+
+  const navigate = useNavigate();
 
   const fetchHistorial = () => {
     if (!token || !usuarioId) return;
@@ -175,6 +179,24 @@ const HistorialTurnos: React.FC = () => {
               </React.Fragment>
             ))}
           </List>
+          <Box display="flex" justifyContent="center" mt={4}>
+            <Button
+              variant="contained"
+              onClick={() => navigate("https://gestion-de-turnos-beta.vercel.app/home")}
+              sx={{
+                px: 4,
+                py: 1.5,
+                fontWeight: "bold",
+                fontSize: "1rem",
+                borderRadius: 2,
+                textTransform: "none",
+                backgroundColor: "#3b82f6", // azul suave
+                "&:hover": { backgroundColor: "#2563eb" },
+              }}
+            >
+              Volver al Inicio
+            </Button>
+          </Box>
         </Paper>
       </Container>
     </Box>

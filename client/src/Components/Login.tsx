@@ -41,7 +41,7 @@ const Login: React.FC = () => {
           localStorage.setItem("token", data.token);
           localStorage.setItem("usuarioId", data.usuario.id.toString());
           localStorage.setItem("admin", JSON.stringify(data.usuario.admin)); 
-          navigate("/home");
+          navigate("https://gestion-de-turnos-beta.vercel.app/home");
         } else {
           setError(data.error || "Error al iniciar sesión");
         }
@@ -161,7 +161,7 @@ const Login: React.FC = () => {
             <Box sx={{ mt: 2, textAlign: "center" }}>
               <Typography variant="body2" sx={{ color: "#d1d5db" }}>
                 ¿No tienes una cuenta?{" "}
-                <Link href="/register" sx={{ color: "#3b82f6", fontWeight: "bold" }}>
+                <Link href="https://gestion-de-turnos-beta.vercel.app/register" sx={{ color: "#3b82f6", fontWeight: "bold" }}>
                   Regístrate aquí
                 </Link>
               </Typography>

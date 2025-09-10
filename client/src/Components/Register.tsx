@@ -47,7 +47,7 @@ export default function Register() {
 
       localStorage.setItem("token", data.token);
       toast.success("✅ Registro exitoso");
-      setTimeout(() => navigate("/login"), 1500);
+      setTimeout(() => navigate("https://gestion-de-turnos-beta.vercel.app/login"), 1500);
     } catch (err) {
       console.error(err);
       toast.error("❌ Error de conexión con el servidor");
@@ -137,7 +137,7 @@ export default function Register() {
             </Button>
 
             <Box display="flex" justifyContent="flex-end">
-              <Link href="/login" variant="body2" sx={{ color: "#3b82f6" }}>
+              <Link href="https://gestion-de-turnos-beta.vercel.app/login" variant="body2" sx={{ color: "#3b82f6" }}>
                 ¿Ya tenés cuenta? Iniciá sesión
               </Link>
             </Box>
