@@ -42,7 +42,7 @@ const Home: React.FC = () => {
   // 🔹 Fetch turnos solo cuando cambia fecha o token
   useEffect(() => {
     if (!token) return;
-    axios.get<Turno[]>("http://gestiondeturnos-production.up.railway.app/turnos", { headers: { Authorization: `Bearer ${token}` } })
+    axios.get<Turno[]>("https://gestiondeturnos-production.up.railway.app/turnos", { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setTurnos(res.data))
       .catch(err => { console.error(err); setTurnos([]); });
   }, [token, location, fechaSeleccionada]);
@@ -89,7 +89,7 @@ const Home: React.FC = () => {
     fecha.setHours(horas, minutos, 0, 0);
 
     axios.post(
-      "http://gestiondeturnos-production.up.railway.app/turnos",
+      "https://gestiondeturnos-production.up.railway.app/turnos",
       { fecha: fechaAUTC(fecha), usuarioId, estado: "reservado" },
       { headers: { Authorization: `Bearer ${token}` } }
     )
@@ -107,7 +107,7 @@ const Home: React.FC = () => {
     fecha.setHours(horas, minutos, 0, 0);
 
     if (turno) {
-      axios.put(`http://gestiondeturnos-production.up.railway.app/turnos/${turno.id}/deshabilitar`, {}, { headers: { Authorization: `Bearer ${token}` } })
+      axios.put(`https://gestiondeturnos-production.up.railway.app/turnos/${turno.id}/deshabilitar`, {}, { headers: { Authorization: `Bearer ${token}` } })
         .then(() => {
           showSnackbar("Turno deshabilitado", "success");
           setTurnos(prev => prev.map(t => t.id === turno.id ? { ...t, estado: "deshabilitado" } : t));
@@ -115,7 +115,7 @@ const Home: React.FC = () => {
         .catch(() => showSnackbar("Error al deshabilitar turno", "error"));
     } else {
       axios.post(
-        "http://gestiondeturnos-production.up.railway.app/turnos",
+        "https://gestiondeturnos-production.up.railway.app/turnos",
         { fecha: fechaAUTC(fecha), usuarioId: 0, estado: "deshabilitado" },
         { headers: { Authorization: `Bearer ${token}` } }
       ).then(res => {
@@ -127,7 +127,7 @@ const Home: React.FC = () => {
   };
 
   const handleHabilitarTurno = (turno: Turno) => {
-    axios.put(`http://gestiondeturnos-production.up.railway.app/turnos/${turno.id}/habilitar`, {}, { headers: { Authorization: `Bearer ${token}` } })
+    axios.put(`https://gestiondeturnos-production.up.railway.app/turnos/${turno.id}/habilitar`, {}, { headers: { Authorization: `Bearer ${token}` } })
       .then(() => {
         showSnackbar("Turno habilitado", "success");
         setTurnos(prev => prev.map(t => t.id === turno.id ? { ...t, estado: "disponible" } : t));
@@ -136,7 +136,7 @@ const Home: React.FC = () => {
   };
 
   const handleCancelarTurno = (turno: Turno) => {
-    axios.put(`http://gestiondeturnos-production.up.railway.app/turnos/${turno.id}/cancelar`, {}, { headers: { Authorization: `Bearer ${token}` } })
+    axios.put(`https://gestiondeturnos-production.up.railway.app/turnos/${turno.id}/cancelar`, {}, { headers: { Authorization: `Bearer ${token}` } })
       .then(() => {
         showSnackbar("Turno cancelado", "success");
         setTurnos(prev => prev.map(t => t.id === turno.id ? { ...t, estado: "disponible" } : t));
