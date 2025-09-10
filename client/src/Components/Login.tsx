@@ -161,7 +161,7 @@ const Login: React.FC = () => {
             <Box sx={{ mt: 2, textAlign: "center" }}>
               <Typography variant="body2" sx={{ color: "#d1d5db" }}>
                 ¿No tienes una cuenta?{" "}
-                <Link href="https://gestion-de-turnos-beta.vercel.app/register" sx={{ color: "#3b82f6", fontWeight: "bold" }}>
+                <Link href="https://tende-corte.vercel.app/register" sx={{ color: "#3b82f6", fontWeight: "bold" }}>
                   Regístrate aquí
                 </Link>
               </Typography>
