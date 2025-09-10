@@ -182,7 +182,7 @@ const HistorialTurnos: React.FC = () => {
           <Box display="flex" justifyContent="center" mt={4}>
             <Button
               variant="contained"
-              onClick={() => navigate("https://gestion-de-turnos-beta.vercel.app/home")}
+              onClick={() => navigate("/home")}
               sx={{
                 px: 4,
                 py: 1.5,
