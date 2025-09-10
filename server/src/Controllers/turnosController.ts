@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import Turno from "../Models/Turnos";
 import { Usuario } from "../Models/Usuario";
 import { Op } from "sequelize";
+import { DateTime } from "luxon";
 import {
   notifyBarberNewBooking,
   notifyClientConfirmed,
@@ -15,20 +16,21 @@ interface AuthRequest extends Request {
 
 const BARBER_PHONE = process.env.BARBER_PHONE!;
 
-// 🔹 Convierte string de frontend a Date local exacta
-const parseLocalDate = (fechaStr: string) => {
-  const [datePart, timePart] = fechaStr.includes("T") ? fechaStr.split("T") : fechaStr.split(" ");
-  const [year, month, day] = datePart.split("-").map(Number);
-  const [hour, minute] = timePart.split(":").map(Number);
-  return new Date(year, month - 1, day, hour, minute, 0, 0);
+// Convierte string local (frontend) a Date UTC para la DB
+const parseLocalDateToUTC = (fechaStr: string) => {
+  return DateTime.fromISO(fechaStr, { zone: "America/Argentina/Buenos_Aires" })
+                 .toUTC()
+                 .toJSDate();
 };
 
-// 🔹 Convierte fecha UTC guardada en DB a hora local Argentina
+
+// Convierte fecha UTC de la DB a hora local Argentina
 const toLocalTime = (fecha: Date) => {
-  return new Date(
-    fecha.toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" })
-  );
+  return DateTime.fromJSDate(fecha, { zone: "UTC" })
+                 .setZone("America/Argentina/Buenos_Aires")
+                 .toJSDate();
 };
+
 
 export const turnoController = {
   crearTurno: async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -43,10 +45,25 @@ export const turnoController = {
       if (usuarioId !== 0) {
         cliente = await Usuario.findByPk(usuarioId);
         if (!cliente) return res.status(404).json({ error: "Usuario no encontrado" });
+
+        // 🔹 Verificar si el usuario ya tiene un turno reservado
+        const turnoUsuario = await Turno.findOne({
+          where: {
+            usuarioId: usuarioId,
+            estado: { [Op.in]: ["reservado", "confirmado"] },
+          },
+        });
+
+        if (turnoUsuario) {
+          return res.status(400).json({ 
+            error: "Ya tienes un turno reservado", 
+            turno: { ...turnoUsuario.toJSON(), fecha: toLocalTime(turnoUsuario.fecha) } 
+          });
+        }
       }
 
       // Interpretar la fecha como local exacta
-      const fechaObj = parseLocalDate(fecha);
+      const fechaObj = parseLocalDateToUTC(fecha);
       const fechaFin = new Date(fechaObj);
       fechaFin.setMinutes(fechaFin.getMinutes() + 1);
 
