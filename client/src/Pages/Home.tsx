@@ -185,12 +185,17 @@ const Home: React.FC = () => {
                       {ocupado ? turno?.estado : esNoLaborable ? "No laborable" : "Reservar"}
                     </Button>
 
-                    {turno && turno.usuarioId === usuarioId && turno.estado === "reservado" && (
-                      <Button variant="outlined" size="small" color="warning" onClick={() => handleCancelarTurno(turno)}>
+                   {esAdmin && turno && (turno.estado === "reservado" || turno.estado === "confirmado") && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="warning"
+                        onClick={() => handleCancelarTurno(turno)}
+                      >
                         Cancelar
                       </Button>
                     )}
-
+                    
                     {esAdmin && !deshabilitado && !esNoLaborable && (
                       <Button
                         variant="outlined"
