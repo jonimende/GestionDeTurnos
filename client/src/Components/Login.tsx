@@ -9,15 +9,13 @@ import {
   Container,
   Paper,
   Link,
-  FormControlLabel,
-  Checkbox,
   Alert,
   CircularProgress,
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 
 const Login: React.FC = () => {
-  const [nombre, setNombre] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,19 +30,21 @@ const Login: React.FC = () => {
       const response = await fetch("https://gestiondeturnos-production.up.railway.app/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, password }),
+        body: JSON.stringify({ telefono, password }),
       });
 
       const data = await response.json();
 
       if (response.ok && data.token) {
-          localStorage.setItem("token", data.token);
-          localStorage.setItem("usuarioId", data.usuario.id.toString());
-          localStorage.setItem("admin", JSON.stringify(data.usuario.admin)); 
-          navigate("/home");
-        } else {
-          setError(data.error || "Error al iniciar sesión");
-        }
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("usuarioId", data.usuario.id.toString());
+        localStorage.setItem("admin", JSON.stringify(data.usuario.admin));
+        
+        // 🔑 Redirect instantáneo
+        navigate("/home", { replace: true });
+      } else {
+        setError(data.error || "Error al iniciar sesión");
+      }
     } catch (err) {
       console.error(err);
       setError("Error de conexión con el servidor");
@@ -96,12 +96,12 @@ const Login: React.FC = () => {
               margin="normal"
               required
               fullWidth
-              id="nombre"
-              label="Nombre"
-              autoComplete="nombre"
+              id="telefono"
+              label="Teléfono"
+              autoComplete="tel"
               autoFocus
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
               sx={{
                 mb: 2,
                 input: { color: "white" },

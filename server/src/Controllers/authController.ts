@@ -37,30 +37,41 @@ export const usuarioController = {
     }
   },
 
-    login: async (req: Request, res: Response, next: NextFunction) => {
-    const { nombre, password } = req.body;
+  login: async (req: Request, res: Response, next: NextFunction) => {
+    const { telefono, password } = req.body;
 
-    if (!nombre || !password) {
-        return res.status(400).json({ error: "Faltan campos obligatorios" });
+    if (!telefono || !password) {
+      return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
     try {
-        const user = await Usuario.findOne({ where: { nombre } });
-        if (!user) {
+      const user = await Usuario.findOne({ where: { telefono } });
+      if (!user) {
         return res.status(404).json({ error: "Usuario no encontrado" });
-        }
+      }
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
         return res.status(401).json({ error: "Contraseña incorrecta" });
+      }
+
+      const token = jwt.sign(
+        { id: user.id, admin: user.admin },
+        JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+
+      return res.json({
+        token,
+        usuario: {
+          id: user.id,
+          telefono: user.telefono, // ahora devuelve el teléfono en lugar del nombre
+          admin: user.admin
         }
-
-        const token = jwt.sign({ id: user.id, admin: user.admin }, JWT_SECRET, { expiresIn: "3h" });
-
-        return res.json({ token,  usuario: { id: user.id, nombre: user.nombre, admin: user.admin } });
+      });
     } catch (error) {
-        console.error(error);
-        next(error);
+      console.error(error);
+      next(error);
     }
   },
 };
