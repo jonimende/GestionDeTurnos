@@ -32,7 +32,7 @@ export default function Register() {
     }
 
     try {
-      const res = await fetch("http://gestiondeturnos-production.up.railway.app/auth/register", {
+      const res = await fetch("https://gestiondeturnos-production.up.railway.app/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre, apellido, telefono, password }),

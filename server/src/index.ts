@@ -13,7 +13,7 @@ const app = express();
 // Configura CORS
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "https://gestion-de-turnos-beta.vercel.app/",
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
