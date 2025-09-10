@@ -41,7 +41,7 @@ const Login: React.FC = () => {
           localStorage.setItem("token", data.token);
           localStorage.setItem("usuarioId", data.usuario.id.toString());
           localStorage.setItem("admin", JSON.stringify(data.usuario.admin)); 
-          navigate("https://gestion-de-turnos-beta.vercel.app/home");
+          navigate("/home");
         } else {
           setError(data.error || "Error al iniciar sesión");
         }
