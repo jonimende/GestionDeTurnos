@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import express, { Request, Response, NextFunction } from "express";
-import bodyParser from "body-parser";
 import cors from "cors";
 import { sequelize } from "./db";
 import authRoutes from "./Routes/authRoutes";
@@ -13,16 +13,18 @@ const app = express();
 // Configura CORS
 app.use(
   cors({
-    origin: "https://gestion-de-turnos-beta.vercel.app",
+    origin: "https://gestion-de-turnos-beta.vercel.app", // sin barra final
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
 
-app.use(bodyParser.json());
+// Parse JSON
+app.use(express.json());
 
-app.use("/auth", authRoutes); 
+// Rutas
+app.use("/auth", authRoutes);
 app.use("/turnos", turnoRoutes);
 app.use("/notify", notifyRoutes);
 
@@ -35,16 +37,22 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
+// Puerto dinámico asignado por Railway
 const port = process.env.PORT || 5000;
 
-sequelize
-  .sync({ force: false })
-  .then(() => {
+// Arrancar servidor inmediatamente
+app.listen(port, () => {
+  console.log(`Servidor corriendo en puerto ${port}`);
+});
+
+// Conectar y sincronizar la base de datos de forma asíncrona
+(async () => {
+  try {
+    await sequelize.authenticate();
+    console.log("Conexión a la base de datos exitosa");
+    await sequelize.sync({ force: false });
     console.log("Base de datos sincronizada correctamente");
-    app.listen(port, () => {
-      console.log(`Servidor corriendo en http://localhost:${port}`);
-    });
-  })
-  .catch((error) => {
-    console.error("Error al sincronizar la base de datos:", error);
-  });
+  } catch (error: any) {
+    console.error("Error al conectar o sincronizar la DB:", error.message);
+  }
+})();
