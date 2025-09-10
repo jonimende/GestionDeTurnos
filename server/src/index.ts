@@ -13,7 +13,7 @@ const app = express();
 // Configura CORS
 app.use(
   cors({
-    origin: "https://gestion-de-turnos-beta.vercel.app", // sin barra final
+    origin: "https://tende-corte.vercel.app", // sin barra final
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,

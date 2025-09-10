@@ -137,7 +137,7 @@ export default function Register() {
             </Button>
 
             <Box display="flex" justifyContent="flex-end">
-              <Link href="https://gestion-de-turnos-beta.vercel.app/login" variant="body2" sx={{ color: "#3b82f6" }}>
+              <Link href="https://tende-corte.vercel.app/login" variant="body2" sx={{ color: "#3b82f6" }}>
                 ¿Ya tenés cuenta? Iniciá sesión
               </Link>
             </Box>
