@@ -46,20 +46,6 @@ export const turnoController = {
         cliente = await Usuario.findByPk(usuarioId);
         if (!cliente) return res.status(404).json({ error: "Usuario no encontrado" });
 
-        // 🔹 Verificar si el usuario ya tiene un turno reservado
-        const turnoUsuario = await Turno.findOne({
-          where: {
-            usuarioId: usuarioId,
-            estado: { [Op.in]: ["reservado", "confirmado"] },
-          },
-        });
-
-        if (turnoUsuario) {
-          return res.status(400).json({ 
-            error: "Ya tienes un turno reservado", 
-            turno: { ...turnoUsuario.toJSON(), fecha: toLocalTime(turnoUsuario.fecha) } 
-          });
-        }
       }
 
       // Interpretar la fecha como local exacta
