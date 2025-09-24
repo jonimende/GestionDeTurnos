@@ -233,7 +233,7 @@ const Home: React.FC = () => {
           </Box>
         )}
       </Card>
-
+    {esAdmin && (
       <Card sx={{ width: "100%", maxWidth: 600, maxHeight: 200, overflow: "hidden", bgcolor: "#1e1e1e", borderRadius: 3, boxShadow: "0 6px 20px rgba(0,0,0,0.5)" }}>
         <CardContent sx={{ maxHeight: 200, overflowY: "auto" }}>
           <Typography sx={{ fontWeight: "bold", color: "#90caf9", mb: 1 }}>Turnos Confirmados</Typography>
@@ -252,7 +252,7 @@ const Home: React.FC = () => {
           </List>
         </CardContent>
       </Card>
-
+    )}
       {esAdmin && (
         <Box mt={4} display="flex" gap={2}>
           <Button variant="contained" onClick={() => navigate("/confirmar-turnos")} sx={{ backgroundColor: "#1976d2", "&:hover": { backgroundColor: "#1565c0" }, fontWeight: "bold" }}>Confirmar/Cancelar Turnos</Button>
