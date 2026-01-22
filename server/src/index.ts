@@ -13,7 +13,7 @@ const app = express();
 // Configura CORS
 app.use(
   cors({
-    origin: ["http://localhost:4200","https://tende-corte.vercel.app"],
+    origin: ["http://localhost:3000","https://tende-corte.vercel.app"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
